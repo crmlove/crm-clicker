@@ -1,0 +1,15 @@
+{
+  "files": {
+    "main.css": "/crm-clicker/static/css/main.e6c13ad2.css",
+    "main.js": "/crm-clicker/static/js/main.140d9e81.js",
+    "static/js/453.3ce77ce2.chunk.js": "/crm-clicker/static/js/453.3ce77ce2.chunk.js",
+    "index.html": "/crm-clicker/index.html",
+    "main.e6c13ad2.css.map": "/crm-clicker/static/css/main.e6c13ad2.css.map",
+    "main.140d9e81.js.map": "/crm-clicker/static/js/main.140d9e81.js.map",
+    "453.3ce77ce2.chunk.js.map": "/crm-clicker/static/js/453.3ce77ce2.chunk.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.e6c13ad2.css",
+    "static/js/main.140d9e81.js"
+  ]
+}
