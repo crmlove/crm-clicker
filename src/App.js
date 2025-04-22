@@ -1,5 +1,3 @@
-import React, { useState, useEffect, useRef } from 'react';
-
 // Yandex Metrika tracking function
   const trackYandexMetrikaEvent = (eventName, eventParams = {}) => {
     if (window.ym) {
@@ -8,7 +6,7 @@ import React, { useState, useEffect, useRef } from 'react';
     } else {
       console.warn('Yandex Metrika not available');
     }
-  };
+  };import React, { useState, useEffect, useRef } from 'react';
 
 // StarfieldAnimation component using Canvas
 const StarfieldAnimation = () => {
@@ -632,6 +630,24 @@ const CRMClicker = () => {
       window.Telegram.WebApp.openTelegramLink(
         `https://t.me/share/url?url=https://t.me/crmclicker_bot/crmclicker&text=${encodeURIComponent(shareText)}`
       );
+    } else {
+      // Запасной вариант для тестирования вне Telegram
+      try {
+        // Попытка использовать Web Share API если доступно
+        if (navigator.share) {
+          navigator.share({
+            title: 'CRM Clicker',
+            text: shareText,
+            url: 'https://t.me/crmclicker_bot/crmclicker'
+          });
+        } else {
+          // Если Web Share API недоступно, открываем обычную ссылку
+          window.open(`https://t.me/share/url?url=https://t.me/crmclicker_bot/crmclicker&text=${encodeURIComponent(shareText)}`, '_blank');
+        }
+      } catch (error) {
+        console.error('Ошибка при шаринге:', error);
+        alert('Не удалось открыть окно шаринга. Попробуйте еще раз!');
+      }
     }
   };
   
@@ -870,7 +886,18 @@ const CRMClicker = () => {
       
       <div style={styles.container}>
         <StarfieldAnimation />
-        <div style={styles.title}>CRM Clicker ⭐🚀</div>
+        <div style={styles.title}>
+          CRM Clicker ⭐🚀
+          <div style={{
+            fontSize: '14px',
+            fontWeight: 'normal',
+            marginTop: '5px',
+            opacity: 0.9,
+            color: '#167DFF'
+          }}>
+            от CRMLOVE 💙
+          </div>
+        </div>
         
         {/* Introduction */}
         {stage === 'intro' && client && (
