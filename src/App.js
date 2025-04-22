@@ -1,5 +1,113 @@
 import React, { useState, useEffect, useRef } from 'react';
 
+// Yandex Metrika tracking function
+  const trackYandexMetrikaEvent = (eventName, eventParams = {}) => {
+    if (window.ym) {
+      window.ym(101298371, 'reachGoal', eventName, eventParams);
+      console.log('Tracked event:', eventName, eventParams);
+    } else {
+      console.warn('Yandex Metrika not available');
+    }
+  };
+
+// StarfieldAnimation component using Canvas
+const StarfieldAnimation = () => {
+  const canvasRef = useRef(null);
+  
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    
+    // Set canvas to full window size
+    const resizeCanvas = () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    };
+    
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+    
+    const ctx = canvas.getContext('2d');
+    let animationFrameId;
+    
+    // Star parameters
+    const stars = [];
+    const starCount = 150;
+    const starSpeed = 2;
+    
+    // Create stars with random positions
+    for (let i = 0; i < starCount; i++) {
+      stars.push({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        size: Math.random() * 2 + 0.5,
+        speed: Math.random() * 1 + starSpeed
+      });
+    }
+    
+    // Animation function
+    const render = () => {
+      // Create gradient background
+      const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+      gradient.addColorStop(0, '#0c1445');
+      gradient.addColorStop(1, '#1a237e');
+      
+      // Clear canvas and fill with gradient
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      
+      // Update and draw stars
+      stars.forEach(star => {
+        // Move star
+        star.y += star.speed;
+        
+        // Reset star position if it goes off screen
+        if (star.y > canvas.height) {
+          star.y = 0;
+          star.x = Math.random() * canvas.width;
+        }
+        
+        // Draw star
+        const opacity = Math.min(1, star.speed / 3);
+        ctx.fillStyle = `rgba(255, 255, 255, ${opacity})`;
+        ctx.beginPath();
+        ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Draw star trail
+        ctx.beginPath();
+        ctx.moveTo(star.x, star.y);
+        ctx.lineTo(star.x, star.y - star.speed * 2);
+        ctx.strokeStyle = `rgba(255, 255, 255, ${opacity * 0.5})`;
+        ctx.lineWidth = star.size * 0.7;
+        ctx.stroke();
+      });
+      
+      animationFrameId = window.requestAnimationFrame(render);
+    };
+    
+    render();
+    
+    return () => {
+      window.cancelAnimationFrame(animationFrameId);
+      window.removeEventListener('resize', resizeCanvas);
+    };
+  }, []);
+  
+  return (
+    <canvas 
+      ref={canvasRef} 
+      style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        width: '100%',
+        height: '100%',
+        zIndex: -1
+      }}
+    />
+  );
+};
+
 const CRMClicker = () => {
   // Store client in state for initial render, then use ref to prevent re-renders
   const [initialClient, setInitialClient] = useState(null);
@@ -21,16 +129,103 @@ const CRMClicker = () => {
   const [problem, setProblem] = useState(null);
   const [options, setOptions] = useState([]);
   
-  // Preload images
-  useEffect(() => {
-    // Preload all client images
-    clients.forEach(client => {
-      if (client.image) {
-        const img = new Image();
-        img.src = client.image;
+  // Component to create a Star Trek style warp speed effect
+  const WarpStarField = () => {
+    const [stars, setStars] = useState([]);
+    
+    useEffect(() => {
+      // Create initial stars
+      createStars();
+      
+      // Recreate stars periodically to maintain the effect
+      const interval = setInterval(() => {
+        createStars();
+      }, 2000);
+      
+      return () => clearInterval(interval);
+    }, []);
+    
+    const createStars = () => {
+      const newStars = [];
+      const screenWidth = window.innerWidth;
+      const screenHeight = window.innerHeight;
+      
+      // Create regular warp stars
+      for (let i = 0; i < 100; i++) {
+        const x = Math.random() * screenWidth;
+        const size = Math.random() * 2 + 1;
+        const speedFactor = Math.random() * 0.8 + 0.5; // Between 0.5 and 1.3
+        const startDelay = Math.random() * 2; // Random start delay
+        
+        newStars.push({
+          id: `warp-${Date.now()}-${i}`,
+          x,
+          size,
+          speedFactor,
+          startDelay,
+          type: 'regular'
+        });
       }
-    });
-  }, []);
+      
+      // Create bright warp stars
+      for (let i = 0; i < 30; i++) {
+        const x = Math.random() * screenWidth;
+        const size = Math.random() * 3 + 2;
+        const speedFactor = Math.random() * 0.5 + 0.7; // Between 0.7 and 1.2
+        const startDelay = Math.random() * 3; // Random start delay
+        
+        newStars.push({
+          id: `warp-bright-${Date.now()}-${i}`,
+          x,
+          size,
+          speedFactor,
+          startDelay,
+          type: 'bright'
+        });
+      }
+      
+      setStars(prev => [...prev, ...newStars]);
+      
+      // Remove old stars after they complete their animation
+      setTimeout(() => {
+        setStars(prev => prev.filter(star => 
+          !newStars.some(newStar => newStar.id === star.id)
+        ));
+      }, 4000);
+    };
+    
+    return (
+      <>
+        {stars.map(star => (
+          star.type === 'regular' ? (
+            <div
+              key={star.id}
+              className="warp-star"
+              style={{
+                left: `${star.x}px`,
+                width: `${star.size}px`,
+                height: `${star.size}px`,
+                animationDuration: `${2.5 / star.speedFactor}s`,
+                animationDelay: `${star.startDelay}s`
+              }}
+            />
+          ) : (
+            <div
+              key={star.id}
+              className="warp-star-bright"
+              style={{
+                left: `${star.x}px`,
+                width: `${star.size}px`,
+                height: `${star.size}px`,
+                animationDuration: `${3 / star.speedFactor}s`,
+                animationDelay: `${star.startDelay}s`
+              }}
+            />
+          )
+        ))}
+      </>
+    );
+  };
   
   // Error messages for different client types
   const errors = {
@@ -123,6 +318,52 @@ const CRMClicker = () => {
       20% { opacity: 1; transform: translate(-50%, -30px); }
       80% { opacity: 1; transform: translate(-50%, -50px); }
       100% { opacity: 0; transform: translate(-50%, -70px); }
+    }
+    
+    @keyframes warpSpeed {
+      0% { 
+        transform: translateZ(0) translateY(-100vh);
+        opacity: 1;
+      }
+      100% { 
+        transform: translateZ(600px) translateY(100vh);
+        opacity: 0;
+      }
+    }
+    
+    @keyframes rotateAndWarp {
+      0% {
+        transform: rotate(0deg) translateZ(-50px) translateY(-10vh);
+        opacity: 0.2;
+      }
+      30% {
+        opacity: 1;
+      }
+      100% {
+        transform: rotate(360deg) translateZ(250px) translateY(120vh);
+        opacity: 0;
+      }
+    }
+    
+    .warp-star {
+      position: absolute;
+      width: 2px;
+      height: 2px;
+      border-radius: 50%;
+      background-color: #fff;
+      animation: warpSpeed 2.5s linear infinite;
+      z-index: 0;
+    }
+    
+    .warp-star-bright {
+      position: absolute;
+      width: 3px;
+      height: 3px;
+      border-radius: 50%;
+      background-color: #5affb4;
+      box-shadow: 0 0 4px #5affb4;
+      animation: rotateAndWarp 3s linear infinite;
+      z-index: 1;
     }
   `;
   
@@ -225,9 +466,9 @@ const CRMClicker = () => {
     setShowScoreAnimation(false);
   };
   
-  // Start game - использовать текущего клиента с intro экрана, а не создавать нового
+  // Start game
   const startGame = () => {
-    // Сохранить клиента с начального экрана
+    // Set the client for the entire game session
     if (!clientRef.current && initialClient) {
       clientRef.current = initialClient;
     }
@@ -237,6 +478,12 @@ const CRMClicker = () => {
     setStage('game');
     setAttempts(prev => prev + 1);
     setUsedProblems([]);
+    
+    // Track game start event
+    trackYandexMetrikaEvent('game_started', { 
+      client_type: clientRef.current ? clientRef.current.type : 'unknown',
+      attempt_number: attempts + 1
+    });
     
     nextRound();
   };
@@ -248,12 +495,21 @@ const CRMClicker = () => {
       setCorrectAnswer(option);
       setShowScoreAnimation(true);
       
+      // Track correct answer
+      trackYandexMetrikaEvent('correct_answer', {
+        client_type: clientRef.current ? clientRef.current.type : 'unknown',
+        problem: problem.problem,
+        solution: problem.solution,
+        current_score: score
+      });
+      
       // Delay before moving to next round or ending
       setTimeout(() => {
         const newScore = score + 1;
         setScore(newScore);
         
         if (newScore >= 10) {
+          trackYandexMetrikaEvent('game_won', { final_score: newScore, lives_left: lives });
           setStage('survey');
         } else {
           // Получаем новую проблему
@@ -262,8 +518,10 @@ const CRMClicker = () => {
           // Если проблемы закончились, переходим к опросу
           if (!nextProblem) {
             if (newScore >= 7) { // Если набрано достаточно баллов для "победы"
+              trackYandexMetrikaEvent('game_won', { final_score: newScore, lives_left: lives });
               setStage('survey');
             } else {
+              trackYandexMetrikaEvent('game_won', { final_score: newScore, lives_left: lives });
               setStage('win'); // Если не хватает баллов, всё равно считаем победой
             }
             return;
@@ -285,12 +543,29 @@ const CRMClicker = () => {
       setErrorMessage(message);
       setShowError(true);
       
+      // Track incorrect answer
+      trackYandexMetrikaEvent('incorrect_answer', {
+        client_type: client ? client.type : 'unknown',
+        problem: problem.problem,
+        wrong_solution: option,
+        correct_solution: problem.solution,
+        current_score: score,
+        lives_left: lives - 1
+      });
+      
       setTimeout(() => {
         const newLives = lives - 1;
         setLives(newLives);
         
         if (newLives <= 0) {
-          setStage('lose');
+          // Проверяем количество очков при проигрыше
+          if (score >= 7) { // Если набрано достаточно баллов для "победы"
+            trackYandexMetrikaEvent('game_won', { final_score: score, lives_left: 0 });
+            setStage('survey');
+          } else {
+            trackYandexMetrikaEvent('game_lost', { final_score: score });
+            setStage('lose');
+          }
         } else {
           // Получаем новую проблему для следующего раунда
           const nextProblem = getRandomProblem();
@@ -298,8 +573,10 @@ const CRMClicker = () => {
           // Если проблемы закончились, завершаем игру
           if (!nextProblem) {
             if (score >= 7) {
+              trackYandexMetrikaEvent('game_won', { final_score: score, lives_left: newLives });
               setStage('survey');
             } else {
+              trackYandexMetrikaEvent('game_won', { final_score: score, lives_left: newLives });
               setStage('win');
             }
             return;
@@ -320,6 +597,13 @@ const CRMClicker = () => {
   // Handle survey - разные состояния для положительного и отрицательного ответа
   const handleSurvey = (isLiked) => {
     setLiked(isLiked);
+    
+    // Track survey response
+    trackYandexMetrikaEvent('survey_response', { 
+      liked: isLiked,
+      final_score: score
+    });
+    
     // Переходим на разные экраны в зависимости от ответа
     if (isLiked) {
       setStage('win');
@@ -330,9 +614,23 @@ const CRMClicker = () => {
   
   // Share game
   const shareGame = () => {
+    // Формируем текст для шаринга
+    const clientName = clientRef.current ? clientRef.current.name : "клиент";
+    const scoreText = `Мой результат в CRM Clicker: ${score} из 10 очков!`;
+    const clientText = `${clientName} ${stage === 'lose' ? 'ушел к конкурентам' : 'успешно прошел путь'}!`;
+    const shareText = `${scoreText}\n${clientText}\nПопробуй и ты: https://t.me/crmclicker_bot/crmclicker`;
+    
+    // Метрика
+    trackYandexMetrikaEvent('share_game', { 
+      final_score: score,
+      client_type: clientRef.current ? clientRef.current.type : 'unknown',
+      share_text: shareText
+    });
+    
+    // Шаринг через Telegram WebApp
     if (window.Telegram && window.Telegram.WebApp) {
       window.Telegram.WebApp.openTelegramLink(
-        "https://t.me/share/url?url=https://crmlove.github.io/crm-clicker"
+        `https://t.me/share/url?url=https://t.me/crmclicker_bot/crmclicker&text=${encodeURIComponent(shareText)}`
       );
     }
   };
@@ -350,13 +648,28 @@ const CRMClicker = () => {
     setUsedProblems([]);
   };
   
-  // Initialize game
+  // Initialize game, preload images, init client
   useEffect(() => {
     // Set initial client for intro screen
     const newClient = getRandomClient();
     clientRef.current = newClient;
     setInitialClient(newClient);
     console.log("Initial client set:", newClient);
+    
+    // Preload all client images
+    clients.forEach(client => {
+      if (client.image) {
+        const img = new Image();
+        img.src = client.image;
+      }
+    });
+    
+    // Track initial page view
+    if (window.ym) {
+      setTimeout(() => {
+        trackYandexMetrikaEvent('game_loaded');
+      }, 1000);
+    }
   }, []);
   
   // Timer effect
@@ -375,7 +688,15 @@ const CRMClicker = () => {
               setLives(newLives);
               
               if (newLives <= 0) {
-                setStage('lose');
+                // Когда игра заканчивается из-за отсутствия жизней
+                // Проверяем количество очков для определения исхода
+                if (score >= 7) {
+                  // Если набрано достаточно очков, считаем, что игрок выиграл
+                  setStage('survey');
+                } else {
+                  // Иначе проигрыш
+                  setStage('lose');
+                }
               } else {
                 // Получаем новую проблему - интегрируем проверку на доступность проблем
                 const nextProblem = getRandomProblem();
@@ -413,32 +734,38 @@ const CRMClicker = () => {
     container: {
       width: '100%',
       minHeight: '100vh',
-      backgroundColor: '#0c1445',
       color: 'white',
       fontFamily: 'Arial, sans-serif',
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
       justifyContent: 'center',
-      padding: '20px',
-      boxSizing: 'border-box'
+      padding: '10px',
+      boxSizing: 'border-box',
+      position: 'relative',
+      overflow: 'hidden'
     },
     title: {
-      fontSize: '24px',
+      fontSize: '20px',
       fontWeight: 'bold',
-      marginBottom: '20px',
+      marginBottom: '15px',
       textAlign: 'center'
     },
     box: {
       backgroundColor: 'rgba(10, 20, 50, 0.8)',
-      padding: '20px',
+      padding: '15px',
       borderRadius: '10px',
       width: '100%',
-      maxWidth: '500px',
+      maxWidth: '450px',
       boxSizing: 'border-box',
-      marginBottom: '20px',
+      marginBottom: '15px',
       border: '1px solid rgba(100, 200, 255, 0.5)',
-      textAlign: 'center'
+      textAlign: 'center',
+      boxShadow: '0 0 20px rgba(100, 200, 255, 0.2)',
+      backdropFilter: 'blur(5px)',
+      position: 'relative',
+      zIndex: 10,
+      fontSize: '14px'
     },
     avatar: {
       width: '70px',
@@ -462,7 +789,20 @@ const CRMClicker = () => {
       margin: '5px 0',
       width: '100%',
       fontSize: '16px',
-      cursor: 'pointer'
+      cursor: 'pointer',
+      transition: 'all 0.2s ease-in-out',
+      position: 'relative',
+      overflow: 'hidden',
+      boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+      '&:hover': {
+        backgroundColor: 'rgba(41, 98, 255, 0.9)',
+        transform: 'translateY(-2px)',
+        boxShadow: '0 6px 8px rgba(0, 0, 0, 0.2)'
+      },
+      '&:active': {
+        transform: 'translateY(1px)',
+        boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)'
+      }
     },
     buttonGreen: {
       backgroundColor: 'rgba(52, 168, 83, 0.8)'
@@ -517,11 +857,19 @@ const CRMClicker = () => {
               "clientRef:", clientRef.current ? clientRef.current.name : "none",
               "stage:", stage);
   
-  // Render
   return (
     <>
       <style dangerouslySetInnerHTML={{ __html: animationStyles }} />
+      
+      {/* Yandex Metrika counter - noscript fallback */}
+      <noscript>
+        <div>
+          <img src="https://mc.yandex.ru/watch/101298371" style={{ position: 'absolute', left: '-9999px' }} alt="" />
+        </div>
+      </noscript>
+      
       <div style={styles.container}>
+        <StarfieldAnimation />
         <div style={styles.title}>CRM Clicker ⭐🚀</div>
         
         {/* Introduction */}
@@ -552,7 +900,7 @@ const CRMClicker = () => {
             
             <p>Это <span style={styles.highlight}>{client.name}</span> — {client.desc}.</p>
             
-            <p>{client.name} нашел(а) ваш бренд и почти совершил(а) покупку. 
+            <p>{client.name} нашел ваш бренд и почти совершил покупку. 
             Но путь впереди — как космос: красивый, но опасный.</p>
             
             <p>У вас есть только 3 жизни. Ошибка — и клиент уйдёт навсегда.</p>
@@ -636,8 +984,9 @@ const CRMClicker = () => {
               display: 'flex',
               justifyContent: 'space-between',
               width: '100%',
-              maxWidth: '500px',
-              marginTop: '15px'
+              maxWidth: '450px',
+              marginTop: '10px',
+              fontSize: '14px'
             }}>
               <div>❤️ Жизни: {lives}</div>
               <div>⭐ Очки: {score}/10</div>
@@ -730,17 +1079,18 @@ const CRMClicker = () => {
             <div style={{margin: '20px 0'}}>
               <div style={{
                 backgroundColor: 'rgba(0, 0, 0, 0.2)',
-                padding: '15px',
+                padding: '10px',
                 borderRadius: '10px',
-                marginBottom: '20px',
-                border: '1px solid rgba(100, 200, 255, 0.5)'
+                marginBottom: '15px',
+                border: '1px solid rgba(100, 200, 255, 0.5)',
+                fontSize: '13px'
               }}>
-                <h3 style={{color: '#5affb4', marginTop: '0'}}>🚀 Хотите открыть продолжение?</h3>
+                <h3 style={{color: '#5affb4', marginTop: '0', fontSize: '16px'}}>🚀 Хотите открыть продолжение?</h3>
                 
-                <p>Подписка на канал студии <strong>CRMLOVE</strong> — это ваш доступ ко второй части игры.
+                <p style={{margin: '5px 0'}}>Подписка на канал студии <strong>CRMLOVE</strong> — это ваш доступ ко второй части игры.
                 Только подписчики узнают, как развиваются события и какие герои появятся дальше.</p>
                 
-                <p>📈 Кроме того, вас ждёт полезный контент о росте продаж и любви к клиентам 💙</p>
+                <p style={{margin: '5px 0'}}>📈 Кроме того, вас ждёт полезный контент о росте продаж и любви к клиентам 💙</p>
               </div>
               
               <a 
@@ -772,19 +1122,18 @@ const CRMClicker = () => {
               </button>
             </div>
             
-            <button 
-              style={{
-                ...styles.button,
-                backgroundColor: '#4CAF50',
-                padding: '15px',
-                fontSize: '18px',
-                fontWeight: 'bold',
-                boxShadow: '0 4px 10px rgba(76, 175, 80, 0.5)'
-              }}
-              onClick={restart}
-            >
-              🎮 Играть еще раз
-            </button>
+            <button style={{
+              ...styles.button,
+              backgroundColor: '#4CAF50',
+              padding: '12px',
+              fontSize: '15px',
+              fontWeight: 'bold',
+              boxShadow: '0 4px 10px rgba(76, 175, 80, 0.5)'
+            }}
+            onClick={restart}
+          >
+            🎮 Играть еще раз
+          </button>
           </div>
         )}
         
@@ -819,16 +1168,17 @@ const CRMClicker = () => {
             <div style={{margin: '20px 0'}}>
               <div style={{
                 backgroundColor: 'rgba(0, 0, 0, 0.2)',
-                padding: '15px',
+                padding: '10px',
                 borderRadius: '10px',
-                marginBottom: '20px',
-                border: '1px solid rgba(100, 200, 255, 0.5)'
+                marginBottom: '15px',
+                border: '1px solid rgba(100, 200, 255, 0.5)',
+                fontSize: '13px'
               }}>
-                <h3 style={{color: '#f8ca00', marginTop: '0'}}>💡 Помогите нам стать лучше!</h3>
+                <h3 style={{color: '#f8ca00', marginTop: '0', fontSize: '16px'}}>💡 Помогите нам стать лучше!</h3>
                 
-                <p>Спасибо, что сообщили, что игра вам не понравилась. Мы постоянно улучшаем наш продукт.</p>
+                <p style={{margin: '5px 0'}}>Спасибо, что сообщили, что игра вам не понравилась. Мы постоянно улучшаем наш продукт.</p>
                 
-                <p>Подпишитесь на канал <strong>CRMLOVE</strong>, чтобы увидеть наши новые, улучшенные игры и полезный контент о клиентском сервисе!</p>
+                <p style={{margin: '5px 0'}}>Подпишитесь на канал <strong>CRMLOVE</strong>, чтобы увидеть наши новые, улучшенные игры и полезный контент о клиентском сервисе!</p>
               </div>
               
               <a 
@@ -920,14 +1270,17 @@ const CRMClicker = () => {
                   style={{
                     ...styles.button,
                     backgroundColor: '#22a0ff',
-                    fontSize: '18px',
-                    padding: '15px',
+                    fontSize: '16px',
+                    padding: '12px',
                     textDecoration: 'none',
                     display: 'block',
                     fontWeight: 'bold',
                     boxShadow: '0 4px 10px rgba(0, 136, 204, 0.5)',
-                    marginBottom: '25px'
+                    marginBottom: '15px',
+                    width: '100%',
+                    boxSizing: 'border-box'
                   }}
+                  onClick={() => trackYandexMetrikaEvent('channel_subscription_click', { from: 'win_screen' })}
                 >
                   ✨ Подписаться на канал ✨
                 </a>
