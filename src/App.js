@@ -978,6 +978,7 @@ const CRMClicker = () => {
       padding: '12px',
       margin: '5px 0',
       width: '100%',
+	  boxSizing: 'border-box',
       fontSize: '16px',
       cursor: 'pointer',
       transition: 'all 0.2s ease-in-out',
