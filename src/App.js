@@ -8,6 +8,8 @@ import React, { useState, useEffect, useRef } from 'react';
       console.warn('Yandex Metrika not available');
     }
   };
+  
+
 
 // StarfieldAnimation component using Canvas
 const StarfieldAnimation = () => {
@@ -111,7 +113,7 @@ const CRMClicker = () => {
   // Store client in state for initial render, then use ref to prevent re-renders
   const [initialClient, setInitialClient] = useState(null);
   const clientRef = useRef(null);
-  
+  const [penaltyTimeoutId, setPenaltyTimeoutId] = useState(null);
   // Initialize state with predefined images
   // Initialize state variables
   const [stage, setStage] = useState('intro');
@@ -549,110 +551,122 @@ const CRMClicker = () => {
   };
   
   // Handle answer option
-  const handleOption = (option) => {
-    if (option === problem.solution) {
-      // Correct answer
-      setCorrectAnswer(option);
-      setShowScoreAnimation(true);
-      
-      // Track correct answer
-      trackYandexMetrikaEvent('correct_answer', {
-        client_type: clientRef.current ? clientRef.current.type : 'unknown',
-        problem: problem.problem,
-        solution: problem.solution,
-        current_score: score
-      });
-      
-      // Delay before moving to next round or ending
-      setTimeout(() => {
-        const newScore = score + 1;
-        setScore(newScore);
-        
-        if (newScore >= 10) {
-          trackYandexMetrikaEvent('game_won', { final_score: newScore, lives_left: lives });
-          setStage('survey');
-        } else {
-          // Получаем новую проблему
-          const nextProblem = getRandomProblem();
-          
-          // Если проблемы закончились, переходим к опросу
-          if (!nextProblem) {
-            if (newScore >= 7) { // Если набрано достаточно баллов для "победы"
-              trackYandexMetrikaEvent('game_won', { final_score: newScore, lives_left: lives });
-              setStage('survey');
-            } else {
-              trackYandexMetrikaEvent('game_won', { final_score: newScore, lives_left: lives });
-              setStage('win'); // Если не хватает баллов, всё равно считаем победой
-            }
-            return;
-          }
-          
-          // Продолжаем игру с новой проблемой
-          setProblem(nextProblem);
-          setOptions(generateOptions(nextProblem.solution));
-          setTimer(7);
-          setShowError(false);
-          setCorrectAnswer(null);
-          setShowScoreAnimation(false);
-        }
-      }, 1000);
-    } else {
-      // Incorrect answer
-      const client = clientRef.current;
-      const message = errors[client.type] || "Клиент потерял интерес...";
-      setErrorMessage(message);
-      setShowError(true);
-      
-      // Track incorrect answer
-      trackYandexMetrikaEvent('incorrect_answer', {
-        client_type: client ? client.type : 'unknown',
-        problem: problem.problem,
-        wrong_solution: option,
-        correct_solution: problem.solution,
-        current_score: score,
-        lives_left: lives - 1
-      });
-      
-      setTimeout(() => {
-        const newLives = lives - 1;
-        setLives(newLives);
-        
-        if (newLives <= 0) {
-          // Проверяем количество очков при проигрыше
-          if (score >= 7) { // Если набрано достаточно баллов для "победы"
-            trackYandexMetrikaEvent('game_won', { final_score: score, lives_left: 0 });
-            setStage('survey');
-          } else {
-            trackYandexMetrikaEvent('game_lost', { final_score: score });
-            setStage('lose');
-          }
-        } else {
-          // Получаем новую проблему для следующего раунда
-          const nextProblem = getRandomProblem();
-          
-          // Если проблемы закончились, завершаем игру
-          if (!nextProblem) {
-            if (score >= 7) {
-              trackYandexMetrikaEvent('game_won', { final_score: score, lives_left: newLives });
-              setStage('survey');
-            } else {
-              trackYandexMetrikaEvent('game_won', { final_score: score, lives_left: newLives });
-              setStage('win');
-            }
-            return;
-          }
-          
-          // Продолжаем игру с новой проблемой
-          setProblem(nextProblem);
-          setOptions(generateOptions(nextProblem.solution));
-          setTimer(7);
-          setShowError(false);
-          setCorrectAnswer(null);
-          setShowScoreAnimation(false);
-        }
-      }, 1500);
+  // Handle answer option
+  const handleOption = (option) => {
+    // Clear the penalty timeout immediately on *any* answer click
+    if (penaltyTimeoutId) {
+      clearTimeout(penaltyTimeoutId);
+      setPenaltyTimeoutId(null);
+    }
+    // Clear any visual error immediately on *any* answer click
+    if (showError) {
+        setShowError(false);
+        setErrorMessage(''); // Clear the message too
     }
-  };
+    
+    if (option === problem.solution) {
+      // Correct answer
+      setCorrectAnswer(option);
+      setShowScoreAnimation(true);
+      
+      // Track correct answer
+      trackYandexMetrikaEvent('correct_answer', {
+        client_type: clientRef.current ? clientRef.current.type : 'unknown',
+        problem: problem.problem,
+        solution: problem.solution,
+        current_score: score
+      });
+      
+      // Delay before moving to next round or ending
+      setTimeout(() => {
+        const newScore = score + 1;
+        setScore(newScore);
+        
+        if (newScore >= 10) {
+          trackYandexMetrikaEvent('game_won', { final_score: newScore, lives_left: lives });
+          setStage('survey');
+        } else {
+          // Получаем новую проблему
+          const nextProblem = getRandomProblem();
+          
+          // Если проблемы закончились, переходим к опросу/победе
+          if (!nextProblem) {
+            if (newScore >= 7) {
+              trackYandexMetrikaEvent('game_won', { final_score: newScore, lives_left: lives });
+              setStage('survey');
+            } else {
+              trackYandexMetrikaEvent('game_won', { final_score: newScore, lives_left: lives });
+              setStage('win');
+            }
+            return;
+          }
+          
+          // Продолжаем игру с новой проблемой
+          setProblem(nextProblem);
+          setOptions(generateOptions(nextProblem.solution));
+          setTimer(7);
+          setShowError(false);
+          setCorrectAnswer(null);
+          setShowScoreAnimation(false);
+        }
+      }, 1000);
+    } else {
+      // Incorrect answer
+      const client = clientRef.current;
+      const message = errors[client.type] || "Клиент потерял интерес...";
+      setErrorMessage(message);
+      setShowError(true);
+      
+      // Track incorrect answer
+      trackYandexMetrikaEvent('incorrect_answer', {
+        client_type: client ? client.type : 'unknown',
+        problem: problem.problem,
+        wrong_solution: option,
+        correct_solution: problem.solution,
+        current_score: score,
+        lives_left: lives - 1
+      });
+      
+      setTimeout(() => {
+        const newLives = lives - 1;
+        setLives(newLives);
+        
+        if (newLives <= 0) {
+          // Проверяем количество очков при проигрыше
+          if (score >= 7) {
+            trackYandexMetrikaEvent('game_won', { final_score: score, lives_left: 0 });
+            setStage('survey');
+          } else {
+            trackYandexMetrikaEvent('game_lost', { final_score: score });
+            setStage('lose');
+          }
+        } else {
+          // Получаем новую проблему для следующего раунда
+          const nextProblem = getRandomProblem();
+          
+          // Если проблемы закончились, завершаем игру
+          if (!nextProblem) {
+            if (score >= 7) {
+              trackYandexMetrikaEvent('game_won', { final_score: score, lives_left: newLives });
+              setStage('survey');
+            } else {
+              trackYandexMetrikaEvent('game_won', { final_score: score, lives_left: newLives });
+              setStage('win');
+            }
+            return;
+          }
+          
+          // Продолжаем игру с новой проблемой
+          setProblem(nextProblem);
+          setOptions(generateOptions(nextProblem.solution));
+          setTimer(7);
+          setShowError(false); // Clear error when starting new round
+          setCorrectAnswer(null);
+          setShowScoreAnimation(false);
+        }
+      }, 1500);
+    }
+  };
   
   // Handle survey - разные состояния для положительного и отрицательного ответа
   const handleSurvey = (isLiked) => {
@@ -724,7 +738,7 @@ const CRMClicker = () => {
 		console.log('Telegram WebApp API недоступен для сохранения результата');
 		
 		// Если WebApp недоступен, показываем пользователю сообщение
-		alert(`Ваш результат: ${score} из 10 очков\n\nХотите получить доступ ко второй части? Подписывайтесь на канал t.me/crmlove`);
+		
 	  }
 	};
   
@@ -815,61 +829,83 @@ const CRMClicker = () => {
   }, []);
   
   // Timer effect
-  useEffect(() => {
-    if (stage === 'game' && timer > 0) {
-      const interval = setInterval(() => {
-        setTimer(prev => {
-          if (prev <= 1) {
-            clearInterval(interval);
-            
-            setErrorMessage("Время вышло! Клиент потерял интерес...");
-            setShowError(true);
-            
-            setTimeout(() => {
-              const newLives = lives - 1;
-              setLives(newLives);
-              
-              if (newLives <= 0) {
-                // Когда игра заканчивается из-за отсутствия жизней
-                // Проверяем количество очков для определения исхода
-                if (score >= 7) {
-                  // Если набрано достаточно очков, считаем, что игрок выиграл
-                  setStage('survey');
-                } else {
-                  // Иначе проигрыш
-                  setStage('lose');
-                }
-              } else {
-                // Получаем новую проблему - интегрируем проверку на доступность проблем
-                const nextProblem = getRandomProblem();
-                if (!nextProblem) {
-                  if (score >= 7) {
-                    setStage('survey');
-                  } else {
-                    setStage('win');
-                  }
-                  return;
-                }
-                
-                // Продолжаем с новой проблемой
-                setProblem(nextProblem);
-                setOptions(generateOptions(nextProblem.solution));
-                setTimer(7);
-                setShowError(false);
-                setCorrectAnswer(null);
-                setShowScoreAnimation(false);
-              }
-            }, 1500);
-            
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-      
-      return () => clearInterval(interval);
+// Timer effect
+  useEffect(() => {
+    if (stage === 'game' && timer > 0) {
+      const interval = setInterval(() => {
+        setTimer(prev => {
+          if (prev <= 1) { // Still check <= 1 to show the last second
+            clearInterval(interval);
+            
+            // Set a timeout for the penalty and visual error
+            const timeoutId = setTimeout(() => {
+              // Only apply penalty and show error if an answer hasn't been given
+              // This check inside the timeout is redundant because penaltyTimeoutId is cleared,
+              // but it makes the logic explicit. The main fix is that setting the error
+              // is now inside this delayed timeout.
+              if (stage === 'game') { // Ensure we are still in the game stage
+                setErrorMessage("Время вышло! Клиент потерял интерес...");
+                setShowError(true);
+                
+                const newLives = lives - 1;
+                setLives(newLives);
+                
+                if (newLives <= 0) {
+                  // Когда игра заканчивается из-за отсутствия жизней
+                  // Проверяем количество очков для определения исхода
+                  if (score >= 7) {
+                    setStage('survey');
+                  } else {
+                    setStage('lose');
+                  }
+                } else {
+                  // Получаем новую проблему - интегрируем проверку на доступность проблем
+                  const nextProblem = getRandomProblem();
+                  if (!nextProblem) {
+                    if (score >= 7) {
+                      setStage('survey');
+                    } else {
+                      setStage('win');
+                    }
+                    return;
+                  }
+                  
+                  // Продолжаем с новой проблемой
+                  setProblem(nextProblem);
+                  setOptions(generateOptions(nextProblem.solution));
+                  setTimer(7);
+                  setShowError(false); // Clear error when starting new round
+                  setCorrectAnswer(null);
+                  setShowScoreAnimation(false);
+                }
+              }
+              setPenaltyTimeoutId(null); // Clear the timeout ID state after it executes
+            }, 1500);
+            
+            // Store the timeout ID so it can be cleared by handleOption
+            setPenaltyTimeoutId(timeoutId);
+            
+            return 0; // Set timer to 0 immediately when it reaches 1
+          }
+          return prev - 1;
+        });
+      }, 1000);
+      
+      // Cleanup function to clear interval and any pending timeout
+      return () => {
+        clearInterval(interval);
+        if (penaltyTimeoutId) {
+          clearTimeout(penaltyTimeoutId);
+          setPenaltyTimeoutId(null); // Clear state on cleanup
+        }
+      };
+    } else if (stage !== 'game' && penaltyTimeoutId) {
+       // Clear any pending penalty timeout if game stage changes
+       clearTimeout(penaltyTimeoutId);
+       setPenaltyTimeoutId(null);
+       setShowError(false); // Also clear the error message if stage changes
     }
-  }, [stage, timer, lives, score]);
+  }, [stage, timer, lives, score, penaltyTimeoutId]); // Add penaltyTimeoutId to dependency array
   
   // Styles
   // Styles
