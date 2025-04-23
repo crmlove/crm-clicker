@@ -673,39 +673,60 @@ const CRMClicker = () => {
   };
   
   // Функция для сохранения лучшего результата в бот и показа сообщения о второй части
-  const saveBestScoreToBotAndShowMessage = () => {
-    // Проверяем, доступен ли Telegram API
-    if (window.Telegram && window.Telegram.WebApp) {
-      try {
-        // Отправляем запрос боту для сохранения лучшего результата
-        fetch(`https://api.telegram.org/bot7632622619:AAHMSYW9ol2tggQ_G1chDTwt-mwC7cgMOM8/sendMessage`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            chat_id: window.Telegram.WebApp.initDataUnsafe?.user?.id || window.Telegram.WebApp.initData.user?.id || "unknown",
-            text: `Сохранен результат игры: ${score} из 10 очков\n\nХотите получить доступ ко второй части? Подписывайтесь на канал t.me/crmlove В нем больше стратегий для удержания клиентов`,
-            parse_mode: 'HTML'
-          })
-        })
-        .then(response => {
-          if (!response.ok) {
-            console.error('Ошибка сохранения результата в боте');
-          } else {
-            console.log('Результат успешно сохранен в боте');
-          }
-        })
-        .catch(error => {
-          console.error('Ошибка при отправке результата:', error);
-        });
-      } catch (error) {
-        console.error('Ошибка при сохранении результата:', error);
-      }
-    } else {
-      console.log('Telegram WebApp API недоступен для сохранения результата');
-    }
-  };
+	  const saveBestScoreToBotAndShowMessage = () => {
+	  // Проверяем, доступен ли Telegram API
+	  if (window.Telegram && window.Telegram.WebApp) {
+		try {
+		  // Получаем идентификатор пользователя из Telegram WebApp
+		  const userId = window.Telegram.WebApp.initDataUnsafe?.user?.id || 
+						 window.Telegram.WebApp.initData?.user?.id || 
+						 "unknown";
+		  
+		  // Отправляем данные не напрямую через API Telegram, а через промежуточный сервер или функцию WebApp
+		  // Это более безопасный подход, который не раскрывает токен бота
+		  if (window.Telegram.WebApp.sendData) {
+			// Используем встроенный метод Telegram для отправки данных боту
+			window.Telegram.WebApp.sendData(JSON.stringify({
+			  action: 'saveScore',
+			  score: score,
+			  message: `Сохранен результат игры: ${score} из 10 очков\n\nХотите получить доступ ко второй части? Подписывайтесь на канал t.me/crmlove В нем больше стратегий для удержания клиентов`
+			}));
+			console.log('Запрос на сохранение результата отправлен через WebApp');
+		  } else {
+			// Альтернативный вариант - отправить данные на ваш собственный сервер
+			// Токен бота хранится на сервере, а не в клиентском коде
+			fetch('https://ваш-сервер.com/api/save-score', {
+			  method: 'POST',
+			  headers: {
+				'Content-Type': 'application/json',
+			  },
+			  body: JSON.stringify({
+				userId: userId,
+				score: score,
+				clientType: clientRef.current?.type || 'unknown'
+			  })
+			})
+			.then(response => {
+			  if (!response.ok) {
+				console.error('Ошибка сохранения результата');
+			  } else {
+				console.log('Результат успешно сохранен');
+			  }
+			})
+			.catch(error => {
+			  console.error('Ошибка при отправке результата:', error);
+			});
+		  }
+		} catch (error) {
+		  console.error('Ошибка при сохранении результата:', error);
+		}
+	  } else {
+		console.log('Telegram WebApp API недоступен для сохранения результата');
+		
+		// Если WebApp недоступен, показываем пользователю сообщение
+		alert(`Ваш результат: ${score} из 10 очков\n\nХотите получить доступ ко второй части? Подписывайтесь на канал t.me/crmlove`);
+	  }
+	};
   
   // Share game
   const shareGame = () => {
